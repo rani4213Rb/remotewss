@@ -1,32 +1,32 @@
-const { Server } = require("socket.io");
+const http = require('http');
+const WebSocket = require('ws');
 
-const io = new Server(3000, {
-  cors: { origin: "*" }
+// ✅ Create HTTP server
+const server = http.createServer((req, res) => {
+  res.writeHead(200);
+  res.end('Remote WebSocket Server is running ✅');
 });
 
-let clients = {};
+// ✅ Attach WebSocket server to HTTP server
+const wss = new WebSocket.Server({ server });
 
-io.on("connection", (socket) => {
-  console.log("✅ Connected:", socket.id);
+wss.on('connection', (ws) => {
+  console.log('✅ New device connected');
 
-  socket.on("register", (id) => {
-    clients[id] = socket;
-    console.log("📍 Registered:", id);
+  ws.on('message', (message) => {
+    console.log('📩 Command received from controller:', message.toString());
+
+    // Echo back (for test only)
+    ws.send('Command received: ' + message.toString());
   });
 
-  socket.on("send-command", ({ to, cmd }) => {
-    if (clients[to]) {
-      clients[to].emit("command", cmd);
-      console.log(`📤 Command sent to ${to}: ${cmd}`);
-    }
+  ws.on('close', () => {
+    console.log('❌ Device disconnected');
   });
+});
 
-  socket.on("disconnect", () => {
-    for (let key in clients) {
-      if (clients[key] === socket) {
-        delete clients[key];
-        break;
-      }
-    }
-  });
+// ✅ Listen on Render dynamic port
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
